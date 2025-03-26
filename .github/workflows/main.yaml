@@ -1,0 +1,60 @@
+name: "Check files and convert it"
+
+on:
+    push:
+        branches: "main"
+        paths: "uploads/**"
+
+jobs:
+    check:
+        runs-on: ubuntu-latest
+        steps:
+            # On récupère et préprare le code du repo
+            - name: "Checkout (git clone ++)"
+              uses: actions/checkout@v4
+
+            # On vérifie que le dossier uploads n'est pas vide
+            - name: "Check files"
+              run: |
+                if [ -d "uploads" ]; then
+                    ls -la uploads/
+
+                    # Count number of files
+                    file_count=$(ls -1 uploads/ | wc -l)
+                
+                    # Result
+                    echo true > result.txt
+                else
+                    echo false > result.txt
+                    exit 1
+                fi
+
+            # On regarde le contenu du fichier result.txt
+            - name: "Check result"
+              run: |
+                if [ -f "result.txt" ]; then
+                    result=$(cat result.txt)
+                    if [ "$result" == "true" ]; then
+                        echo "Conversion OK"
+                        # Si le fichier contient "true", on lance la converions du fichier
+                        sudo apt-get update && sudo apt-get install -y ffmpeg
+                        mkdir output
+                        ffmpeg -i uploads/input.mp4 output/final.avi
+                    else
+                        echo "Conversion non possible sans fichier"
+                        exit 1
+                    fi
+                else
+                    echo "result.txt non trouvé"
+                    exit 1
+                fi
+            # Sinon on arrête le workflow
+
+            # Extraire avec artefact
+            - name: "Download the video"
+              uses: actions/upload-artifact@v4.6.2
+              with:
+                name: video
+                path: output/final.avi
+            
+            
